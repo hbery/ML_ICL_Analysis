@@ -1,0 +1,1 @@
+# AI_Image_Compression_Ratio_Detection
