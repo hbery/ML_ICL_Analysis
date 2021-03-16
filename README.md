@@ -1,1 +1,1 @@
-# AI_Image_Compression_Ratio_Detection
+# ML_Image_Compression_Ratio_Analysis
