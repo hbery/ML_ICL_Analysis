@@ -1,19 +1,21 @@
-# imports
+"""
+:Author: Adam Twardosz (hbery@github.com)
+"""
+
+""" IMPORTS """
 import os
 import random
 import json
 import numpy as np
-from typing import Tuple, List
+from typing import Tuple, List, Dict
+from nptyping import NDArray
 from keras.preprocessing.image import load_img, img_to_array
 
-# "GLOBALS"
-IM_H = 224
-IM_W = 224
-CHAN = 3
-NFRAGS = 8
-STEP = int(IM_H / NFRAGS)
 
-def optimize_batch_size(path_to_images: str) -> int:
+""" FUNCTIONS """
+def optimize_batch_size(
+    path_to_images: str
+) -> int:
 	"""Count all files and declare "optimal" [very narrow case] maximum batch size
 
 	:param path_to_images: Path to the categorized images directory: path_to_images/class_dir/[images..]
@@ -29,12 +31,15 @@ def optimize_batch_size(path_to_images: str) -> int:
 	
 	return int(np.ceil( num_images_per_class / (num_batches + 1)))
 
-def pop_batch(batch: List[str], full_list: List[str]) -> List[str]:
+
+def pop_batch(
+    batch: List[str], 
+    full_list: List[str]
+) -> List[str]:
 	"""Remove chosen images batch from list of all images 
 
 	:param batch: Chosen (sampled) batch from full_list
 	:type batch: list
- 
 	:param full_list: List of images from which the batch is chosen
 	:type full_list: list
 
@@ -43,12 +48,15 @@ def pop_batch(batch: List[str], full_list: List[str]) -> List[str]:
 	"""
 	return list(filter(lambda i: i not in batch, full_list))
 
-def list_shuffle_fission(full_list: List[str], k: int = 200) -> Tuple[List[str], List[str]]:
+
+def list_shuffle_fission(
+    full_list: List[str], 
+    k: int = 200
+) -> Tuple[List[str], List[str]]:
 	"""Choose batch and remove it from full_list, then return both
 
 	:param full_list: List to choose from
 	:type full_list: list
-
 	:param k: Population of a batch, defaults to 200
 	:type k: int
 
@@ -60,12 +68,14 @@ def list_shuffle_fission(full_list: List[str], k: int = 200) -> Tuple[List[str],
 	return lvl_batch, full_list
 
 
-def prebatch_files(files: List[List[str]], max_batch_population: int) -> Tuple[List[List[str]], List[str]]: # 2-dim
-	"""Make batches from images with :max_batch_population: each
+def prebatch_files(
+    files: List[List[str]], 
+    max_batch_population: int
+) -> Tuple[List[List[str]], List[str]]: # 2-dim
+	"""Make batches from images with `max_batch_population` each
 
 	:param files: List of all files
 	:type files: List[str]
-	
  	:param max_batch_population: Maximum batch population
 	:type max_batch_population: int
 	
@@ -94,7 +104,9 @@ def prebatch_files(files: List[List[str]], max_batch_population: int) -> Tuple[L
 	return batches, res_batch 
 
 
-def check_compression_level(filename: str) -> int:
+def check_compression_level(
+    filename: str
+) -> int:
 	"""Check compression level
 
 	:param filename: Filename in format: <filename>_<compression_level>.<extension>
@@ -111,27 +123,39 @@ def check_compression_level(filename: str) -> int:
 		return int(tmp[1])
 
 
-def prepare_images_with_labels(base_path: str, files: List[str], classes: dict) -> Tuple[List[List[List[float]]], List[int]]:
-	"""Make batches from list of file_names and return List of floats and labels
+def prepare_fragmented_images(
+    base_path: str,
+    files: List[str],
+    classes: Dict[str, int],
+    im_height: int,
+    num_channels: int,
+    nfrags: int
+) -> Tuple[NDArray, NDArray]:
+	"""Make batches from list of file_names, divide into fragments and return List of floats and labels
 
 	:param base_path: Absolute path to directory where images are
 	:type base_path: str
- 
 	:param files: List of files to preprocess
 	:type files: List[str]
- 
 	:param classes: Dictionary of classes to exchange compression level into numerical label, values 0..<num_of_classes>
 	:type classes: dict
- 
+	:param im_height: Image height, defaults to 224
+	:type im_height: int, optional
+	:param num_channels: Number of color channels, defaults to 3
+	:type num_channels: int, optional
+	:param nfrags: Number of fragments, defaults to 8
+	:type nfrags: int, optional
+
 	:return: Dataset as normalized floats && labels to each image
-	:rtype: Tuple[List[List[List[float]]], List[int]]
+	:rtype: Tuple[NDArray, NDArray]
 	"""
+	step = int(im_height / nfrags)
 	dataset = np.ndarray(
-		shape=(int(len(files)*(NFRAGS**2)), STEP, STEP, CHAN),
+		shape=(int(len(files)*(nfrags**2)), step, step, num_channels),
 		dtype=np.float32
 	)
-	y = np.ndarray(
-		shape=(int(len(files)*(NFRAGS**2))),
+	labels = np.ndarray(
+		shape=(int(len(files)*(nfrags**2))),
 		dtype=np.int32
 	)
 
@@ -143,46 +167,187 @@ def prepare_images_with_labels(base_path: str, files: List[str], classes: dict) 
 		image = img_to_array(image, data_format='channels_last')
 
 		frag_num = 0
-		for n in range(NFRAGS):
-			for k in range(NFRAGS):
+		for n in range(nfrags):
+			for k in range(nfrags):
 
-				frag = image[ n*STEP : (n+1)*STEP, k*STEP : (k+1)*STEP ]
+				frag = image[ n*step : (n+1)*step, k*step : (k+1)*step ]
 
 				# loading data to arrays
-				dataset[ (NFRAGS**2)*idx + frag_num ] = frag
-				y[ (NFRAGS**2)*idx + frag_num ] = classes[str(label)]
-				frag_num += 1
+				dataset[ (nfrags**2)*idx + frag_num ] = frag
+				
+				labels[ (nfrags**2)*idx + frag_num ] = classes[str(label)]
+				frag_num += 1   
 
 	# normalize dataset to range 0.0..1.0
 	dataset = dataset / 255.0
 
-	return dataset, y
+	return dataset, labels
 
-def calculate_batch_and_save(batch: List[str], save_name: str, classes: dict):
-	"""Take batch, make it Float matrix with labels and save it to .npy file
+
+def prepare_full_images(
+    base_path: str,
+    files: List[str],
+    classes: Dict[str, int],
+    im_height: int,
+    im_width: int,
+    num_channels: int,
+) -> Tuple[NDArray, NDArray]:
+	"""Make batches from list of file_names and return List of floats and labels
+
+	:param base_path: Absolute path to directory where images are
+	:type base_path: str
+	:param files: List of files to preprocess
+	:type files: List[str]
+	:param classes: Dictionary of classes to exchange compression level into numerical label, values 0..<num_of_classes>
+	:type classes: dict
+	:param fragment: To fragment images [ 0 ] or not [ 1 ]
+	:type fragment: int
+	:param im_height: Image height, defaults to 224
+	:type im_height: int, optional
+	:param im_width: Image width, defaults to 224
+	:type im_width: int, optional
+	:param num_channels: Number of color channels, defaults to 3
+	:type num_channels: int, optional
+
+	:return: Dataset as normalized floats && labels to each image
+	:rtype: Tuple[NDArray, NDArray]
+	"""
+	dataset = np.ndarray(
+		shape=(int(len(files)), im_height, im_width, num_channels),
+		dtype=np.float32
+	)
+	labels = np.ndarray(
+		shape=(int(len(files))),
+		dtype=np.int32
+	)
+ 
+	for idx, _f in enumerate(files):
+		label = check_compression_level(_f)
+		path = os.path.join(base_path, str(label), _f)
+
+		image = load_img(path)
+		image = img_to_array(image, data_format='channels_last')
+
+		dataset[ idx ] = image
+		labels[ idx ] = classes[str(label)]
+
+	# normalize dataset to range 0.0..1.0
+	dataset = dataset / 255.0
+
+	return dataset, labels
+
+
+def prepare_images_with_labels(
+    base_path: str,
+    files: List[str],
+    classes: Dict[str, int],
+    fragment: int,
+    im_height: int = 224,
+    im_width: int = 224,
+    num_channels: int = 3,
+    nfrags: int = 8
+) -> Tuple[NDArray, NDArray]:
+	"""Wrapper: Make batches from list of file_names and return List of floats and labels
+
+	:param base_path: Absolute path to directory where images are
+	:type base_path: str
+	:param files: List of files to preprocess
+	:type files: List[str]
+	:param classes: Dictionary of classes to exchange compression level into numerical label, values 0..<num_of_classes>
+	:type classes: dict
+	:param fragment: To fragment images [ 0 ] or not [ 1 ]
+	:type fragment: int
+	:param im_height: Image height, defaults to 224
+	:type im_height: int, optional
+	:param im_width: Image width, defaults to 224
+	:type im_width: int, optional
+	:param num_channels: Number of color channels, defaults to 3
+	:type num_channels: int, optional
+	:param nfrags: Number of fragments, defaults to 8
+	:type nfrags: int, optional
+
+	:return: Dataset as normalized floats && labels to each image
+	:rtype: Tuple[NDArray, NDArray]
+	"""
+	if fragment:
+		return prepare_fragmented_images(base_path, files, classes, im_height, num_channels, nfrags)
+	else:
+		return prepare_full_images(base_path, files, classes, im_height, im_width, num_channels)
+
+
+def calculate_batch_and_save(
+    base_path: str,
+    batch: List[str], 
+    save_name: str, 
+    classes: Dict[str, int],
+    fragment: int = 0
+):
+	"""Take batch, make it Float matrix with labels and save it to .npz file
 
 	:param batch: List of filenames
 	:type batch: list
- 
 	:param save_name: Name to save the batch
 	:type save_name: str
- 
 	:param classes: List of classes
 	:type classes: list
+	:param fragment: Whether to fragment data [ 1 ] or not [ 0 ], defautls to 0
+ 	:type fragment: int
 	"""
  	# read all files
-	( x, y ) = prepare_images_with_labels(base_path, batch, classes)
+	( x, y ) = prepare_images_with_labels(base_path, batch, classes, fragment)
 
 	# save the database and labels to *.npz files
 	np.savez(save_name, dataset=x, labels=y)
 
 
+def calculate_mixed_batch_and_save(
+	path_train: str,
+	path_test: str,
+ 	btrain: List[str],
+	btest: List[str],
+	save_name: str,
+	classes: Dict[str, int],
+	fragment: int = 0
+) -> None:
+	"""Calculate two batches and save as train and test set
+
+	:param path_train: Path to train set folder
+	:type path_train: str
+	:param path_test: Path to test set folde
+	:type path_test: str
+	:param btrain: Train batch
+	:type btrain: List[str]
+	:param btest: Test batch
+	:type btest: List[str]
+	:param save_name: Name to save the batch
+	:type save_name: str
+	:param classes: Classes dictionary
+	:type classes: Dict[]
+	:param fragment: Whether to fragment data [ 1 ] or not [ 0 ], defautls to 0
+	:type fragment: int, optional
+ 	"""
+	# read all files
+	( dtrain, ltrain ) = prepare_images_with_labels(path_train, btrain, classes, fragment)
+	( dtest, ltest ) = prepare_images_with_labels(path_test, btest, classes, fragment)
+
+	# save the database and labels to *.npz files
+	np.savez(
+     	save_name, 
+     	dtrain=dtrain, 
+      	ltrain=ltrain,
+       	dtest=dtest, 
+      	ltest=ltest
+    )
+	print(f"Saved to file: {os.path.basename(save_name)} => {dtrain.shape=}, {ltrain.shape=}, {dtest.shape=}, {ltest.shape=}")
+
+
+""" MAIN """
 if __name__ == "__main__":
 
-	num_classes = 15
+	num_classes = 6
+ 
 	# variables
 	base_path = os.path.abspath(f'./224x224_{num_classes}_compression_levels')
-	# base_path = os.path.abspath('./224x224_15_compression_levels')
 	all_files = []
 	out_files = os.path.abspath(f'./out_files_{num_classes}cat')
 
@@ -199,11 +364,11 @@ if __name__ == "__main__":
 	with open(os.path.join(out_files, f"classes_{num_classes}cat.json"), "w") as fclass:
 		json.dump(classes, fclass)
 
-	( batches, res_batch ) = prebatch_files(all_files, optimize_batch_size(base_path))
+	( batches, res_batch ) = prebatch_files(all_files, 200)
 
 	cnt = 1
 	for batch in batches:
-		calculate_batch_and_save(batch, os.path.join(out_files, f'dataset_labels_{num_classes}cat_{cnt:02}.npz'), classes)
+		calculate_batch_and_save(base_path, batch, os.path.join(out_files, f'dataset_labels_full_{num_classes}cat_{cnt:02}.npz'), classes)
 		cnt += 1
 
-	calculate_batch_and_save(res_batch, os.path.join(out_files, f'dataset_labels_{num_classes}cat_{cnt:02}.npz'), classes)
+	calculate_batch_and_save(base_path, res_batch, os.path.join(out_files, f'dataset_labels_full_{num_classes}cat_{cnt:02}.npz'), classes)
