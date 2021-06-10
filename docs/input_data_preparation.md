@@ -2,7 +2,7 @@
 # Preparation of input data
 
 ## Downloading datasets
-Downscaled sample datasets (512x512px) are available under [TODO]
+Downscaled sample datasets (RAISE 512x512px and NASA 224x224px) are available under [this link](https://1drv.ms/u/s!ArulGzR8K2KChMBigs7gc_gc6rOHEw?e=BIqmw0)
 
 ### NASA dataset
 https://photojournal.jpl.nasa.gov
