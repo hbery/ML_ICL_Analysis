@@ -1,8 +1,12 @@
 # ML_Image_Compression_Ratio_Analysis
 
-## About
+## About Project
 
-This Git repository contains useful scripts and information that can be helpful during project reproduction. Scripts are containes in [Scripts](./scripts) folder. At first we have done it in Google Colab, so in [Notebooks](./notebooks) folder are notebooks that we used. Documentation about image preparation can be found in [Docs](./docs). Examples of model training and statistics/charts produced by scripts is located in [Examples](./docs/examples) folder.
+This project treats about JPEG Compression Level Detection using Machine Learning and CNN Tensorflow model. This repository contains all things that we used to build a model and test it.
+
+## About Repository
+
+This Git repository contains useful scripts and information that can be helpful during project reproduction. Scripts are contained in [Scripts](./scripts) folder. At first we have done it in Google Colab, so in [Notebooks](./notebooks) folder are notebooks that we used. Documentation about image preparation can be found in [Docs](./docs). Examples of model training and statistics/charts produced by scripts is located in [Examples](./docs/examples) folder.
 
 ## Tree view of our project
 
