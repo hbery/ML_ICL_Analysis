@@ -28,12 +28,17 @@ def main():
         print(f"Usage: {os.path.basename(sys.argv[0])} <folder with batches> <'model_name'>")
         sys.exit(-1)
     
+    cwd = os.getcwd()
     folder = os.path.basename(sys.argv[1])
     base_path = os.path.abspath(folder)
     model_name = os.path.basename(sys.argv[2])
-    model_path = os.path.join(os.getcwd(), "models", sys.argv[2])
+    model_path = os.path.join(cwd, "models", sys.argv[2])
+    statistics = os.path.join(cwd, 'statistics')
     default_line_length = 65
     tmp_save = 1
+    
+    if not os.path.isdir(statistics):
+        os.mkdir(statistics)
     
     dir_files = os.listdir(base_path)
     class_file = list(filter(lambda file: "classes" in file, dir_files))[0]
@@ -122,8 +127,8 @@ def main():
     print(f"⮔ Model saved as:\n\t{model_path}\n".center(default_line_length))
 
 
-    tstats_path = os.path.join(base_path, f'{model_name}_train_stats.json')
-    thistory_path = os.path.join(base_path, f'{model_name}_train_history.json')
+    tstats_path = os.path.join(statistics, f'{model_name}_train_stats.json')
+    thistory_path = os.path.join(statistics, f'{model_name}_train_history.json')
     # Save score and history for plotting
     with open(tstats_path, 'w') as fjson:
         json.dump(score, fjson)
@@ -155,7 +160,7 @@ def main():
             nature_predictions.extend(prob_model.predict(test_batch["ntdtest"]))
           
     # Save data for plotting
-    stats_path = os.path.join(base_path, f'{model_name}_stats.npz')
+    stats_path = os.path.join(statistics, f'{model_name}_stats.npz')
     np.savez(stats_path,
         nasa_predictions=nasa_predictions,
         nasa_labels=nasa_labels,

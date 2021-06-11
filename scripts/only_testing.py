@@ -28,14 +28,18 @@ def main():
 	folder = os.path.basename(sys.argv[1])
 	base_path = os.path.abspath(folder)
 	dst_path = ""
- 	if len(sys.argv) > 3:
+	if len(sys.argv) > 3:
 		dst_path = os.path.abspath(sys.argv[3])
 	else:
 		dst_path = base_path
 
 	model_name = os.path.basename(sys.argv[2])
 	model_path = os.path.join(cwd, "models", model_name)
+	statistics = os.path.join(cwd, 'statistics')
 	default_line_length = 65
+
+	if not os.path.isdir(statistics):
+		os.mkdir(statistics)
 
 	dir_files = os.listdir(base_path)
 	test_files = list(filter(lambda file: "test" in file, dir_files))
