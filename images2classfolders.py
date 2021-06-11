@@ -1,16 +1,18 @@
+#!/usr/bin/env python3
+
+"""Load undivided set of images, 
+	split into categories by name and put it in category folders
+
+	:Date: 04.2021
+	:Author: Adam Twardosz (a.twardosz98@gmail.com, https://github.com/hbery)
+"""
+
 import os, shutil
+from utils import check_compression_level
 
 base_path = os.getcwd()
 folder_name = '224x224_NASA_classed'
 base_folder = '224x224_NASA_dataset'
-
-def check_compression_level(filename: str) -> int:
-	basename, ext = filename.split('.')
-	tmp = basename.split('_')
-	if len(tmp) == 1:
-		return 100
-	else:
-		return int(tmp[1])
 
 def main():
 	os.chdir(base_path)
@@ -32,5 +34,6 @@ def main():
 		print(e)
 
 
+""" MAIN """
 if __name__ == "__main__":
 	main()

@@ -1,11 +1,17 @@
-"""
-:Author: Adam Twardosz (hbery@github.com)
+#!/usr/bin/env python3
+
+"""Utils file to support scripts with useful functions
+
+	:Date: 05.2021
+	:Author: Adam Twardosz (a.twardosz98@gmail.com, https://github.com/hbery)
 """
 
 """ IMPORTS """
-import os
+import os, sys
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
 import random
-import json
+from types import DynamicClassAttribute
 import numpy as np
 from typing import Tuple, List, Dict
 from nptyping import NDArray
@@ -64,8 +70,8 @@ def list_shuffle_fission(
 	:rtype: Tuple[list, list]
 	"""
 	lvl_batch = random.sample(full_list, k=k)
-	full_list = pop_batch(lvl_batch, full_list)
-	return lvl_batch, full_list
+	residual_list = pop_batch(lvl_batch, full_list)
+	return lvl_batch, residual_list
 
 
 def prebatch_files(
@@ -102,6 +108,27 @@ def prebatch_files(
 	random.shuffle(res_batch)
 	
 	return batches, res_batch 
+
+
+def pop_testing_set(all_files: List[List[str]], batch_k: int = 1064) -> Tuple[List[List[str]], List[List[str]]]:
+	"""Pop batch for testing from training data
+
+	:param all_files: All training files groupped by category
+	:type all_files: List[List[str]]
+	:param batch_k: batch_k of testing set, defaults to 1064
+	:type batch_k: int, optional
+	:return: Return 1st=Testing and 2nd=Training set
+	:rtype: Tuple[List[List[str]], List[List[str]]]
+	"""
+	test_files = []
+	train_files = []
+	
+	for lvl in all_files:
+		test_lvl, train_lvl = list_shuffle_fission(lvl, batch_k)
+		test_files.append(test_lvl)
+		train_files.append(train_lvl)
+  
+	return ( test_files, train_files )
 
 
 def check_compression_level(
@@ -294,17 +321,19 @@ def calculate_batch_and_save(
  	:type fragment: int
 	"""
  	# read all files
-	( x, y ) = prepare_images_with_labels(base_path, batch, classes, fragment)
+	( dataset, labels ) = prepare_images_with_labels(base_path, batch, classes, fragment)
 
 	# save the database and labels to *.npz files
-	np.savez(save_name, dataset=x, labels=y)
+	np.savez(save_name, dataset=dataset, labels=labels)
+ 
+	print(f"Saved to file: {os.path.basename(save_name)} => {dataset.shape=}, {labels.shape=}")	
 
 
 def calculate_mixed_batch_and_save(
-	path_train: str,
-	path_test: str,
- 	btrain: List[str],
-	btest: List[str],
+	path_ds1: str,
+	path_ds2: str,
+ 	bds1: List[str],
+	bds2: List[str],
 	save_name: str,
 	classes: Dict[str, int],
 	fragment: int = 0
@@ -322,53 +351,75 @@ def calculate_mixed_batch_and_save(
 	:param save_name: Name to save the batch
 	:type save_name: str
 	:param classes: Classes dictionary
-	:type classes: Dict[]
+	:type classes: Dict[str, int]
 	:param fragment: Whether to fragment data [ 1 ] or not [ 0 ], defautls to 0
 	:type fragment: int, optional
  	"""
 	# read all files
-	( dtrain, ltrain ) = prepare_images_with_labels(path_train, btrain, classes, fragment)
-	( dtest, ltest ) = prepare_images_with_labels(path_test, btest, classes, fragment)
+	( nsdtest, nsltest ) = prepare_images_with_labels(path_ds1, bds1, classes, fragment)
+	( ntdtest, ntltest ) = prepare_images_with_labels(path_ds2, bds2, classes, fragment)
 
 	# save the database and labels to *.npz files
 	np.savez(
      	save_name, 
-     	dtrain=dtrain, 
-      	ltrain=ltrain,
-       	dtest=dtest, 
-      	ltest=ltest
+     	nsdtest=nsdtest,
+      	nsltest=nsltest,
+       	ntdtest=ntdtest, 
+      	ntltest=ntltest
     )
-	print(f"Saved to file: {os.path.basename(save_name)} => {dtrain.shape=}, {ltrain.shape=}, {dtest.shape=}, {ltest.shape=}")
+	print(f"Saved to file: {os.path.basename(save_name)} => {nsdtest.shape=}, {nsltest.shape=}, {ntdtest.shape=}, {ntltest.shape=}")
+
+
+def banner(
+    text: str, *, 
+    length: int = 65, 
+    frame_char: str = '#'
+) -> str:
+	"""Print banner in terminal
+
+	:param text: Text to display in banner
+	:type text: str
+	:param length: Width of the banner in columns, defaults to 65
+	:type length: int, optional
+	:param frame_char: Character to make frame of, defaults to '#'
+	:type frame_char: str, optional
+	:return: Readymade banner to print out on the screen 
+	:rtype: str
+	"""
+	stext = ' %s ' % text
+	mbanner = frame_char*2 + stext.center(length-4) + frame_char*2
+	fframe = frame_char*length
+	eframe = frame_char*2 + ' '*(length-4) + frame_char*2
+	banner = f"{fframe}\n{eframe}\n{mbanner}\n{eframe}\n{fframe}\n\n"
+	return banner
+
+
+def continue_or_quit():
+    """Wait for user input to continue or quit if requested"""
+    q = input("Press q to quit, Enter to continue.. ")
+    if q in ['q', 'quit', 'exit']:
+        sys.exit(0)
+    print("\n")
+
+    
+def check_prediction(
+    predicted_array: List[float],
+    real: int
+) -> Tuple[bool, float]:
+	"""Check if prediction was successful
+ 
+	:param predicted_array: Predicted array of probabilities 
+	:type predicted_array: List[float]
+	:param real: Real label of image
+	:type real: int
+ 	"""
+	predicted = np.argmax(predicted_array)
+	if predicted == real:
+		return True, predicted_array[predicted]
+	else:
+		return False, predicted_array[predicted]
 
 
 """ MAIN """
 if __name__ == "__main__":
-
-	num_classes = 6
- 
-	# variables
-	base_path = os.path.abspath(f'./224x224_{num_classes}_compression_levels')
-	all_files = []
-	out_files = os.path.abspath(f'./out_files_{num_classes}cat')
-
-
-	# Make batches into separate files
-	class_list = os.listdir(base_path)
-	[ all_files.append(os.listdir(os.path.join(base_path, directory))) for directory in os.listdir(base_path) ]
-
-	# make classes into numbers from 0-num(classes)
-	classes = {}
-	for idx, label in enumerate(sorted(list(set(class_list)), key=lambda x: int(x))):
-		classes[label] = idx
-
-	with open(os.path.join(out_files, f"classes_{num_classes}cat.json"), "w") as fclass:
-		json.dump(classes, fclass)
-
-	( batches, res_batch ) = prebatch_files(all_files, 200)
-
-	cnt = 1
-	for batch in batches:
-		calculate_batch_and_save(base_path, batch, os.path.join(out_files, f'dataset_labels_full_{num_classes}cat_{cnt:02}.npz'), classes)
-		cnt += 1
-
-	calculate_batch_and_save(base_path, res_batch, os.path.join(out_files, f'dataset_labels_full_{num_classes}cat_{cnt:02}.npz'), classes)
+    print(banner("Hello"))
