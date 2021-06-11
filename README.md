@@ -1,4 +1,4 @@
-# ML_Image_Compression_Ratio_Analysis
+# ML_ICL_Analysis
 
 ## About Project
 
