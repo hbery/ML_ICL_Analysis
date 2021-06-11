@@ -17,7 +17,7 @@ from sklearn.model_selection import StratifiedKFold
 from keras.models import Sequential
 from keras.layers import Softmax
 
-from utils import banner
+from utils import banner, continue_or_quit
 from model import build_model
 
 
@@ -64,10 +64,8 @@ def main():
     print(model.summary(line_length=default_line_length))
     print()
     
-    q = input("Press q to quit, Enter to continue.. ")
-    if q in ['q', 'quit', 'exit']:
-        sys.exit(0)
-    print("\n")
+    # Wait for user action
+    continue_or_quit()
     
     """ ~~~~ BATCH LOOP ~~~~ """
     score = []
